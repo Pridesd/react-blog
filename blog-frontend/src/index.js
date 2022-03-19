@@ -29,6 +29,7 @@ function loadUser() {
 }
 
 sagaMiddleware.run(rootSaga)
+loadUser();
 
 ReactDOM.render(
   <Provider store={store}>
