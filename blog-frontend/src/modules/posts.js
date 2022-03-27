@@ -1,7 +1,7 @@
 import { createAction, handleActions } from "redux-actions";
 import createRequestSaga, {createRequestActionTypes} from "../lib/createRequestSaga";
 import * as postsAPI from '../lib/api/posts';
-import {takeLatest} from 'redux-saga';
+import {takeLatest} from 'redux-saga/effects';
 
 const [
     LIST_POSTS,
@@ -24,7 +24,7 @@ const initialState = {
 
 const posts = handleActions(
     {
-        [LIST_POSTS_SUCCESS]: (state, {payload: post}) => ({
+        [LIST_POSTS_SUCCESS]: (state, {payload: posts}) => ({
             ...state,
             posts,
         }),
