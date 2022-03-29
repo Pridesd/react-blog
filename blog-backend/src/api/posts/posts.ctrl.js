@@ -1,6 +1,7 @@
 import Post from '../../models/post';
 import mongoose from 'mongoose';
 import Joi from 'joi';
+import sanitizeHtml from 'sanitize-html';
 
 const { ObjectId } = mongoose.Types;
 
@@ -32,14 +33,32 @@ export const checkOwnPost = (ctx, next) => {
   }
   return next();
 };
-/*
-  POST /api/posts
-  {
-    title: '제목',
-    body: '내용',
-    tags: ['태그1', '태그2']
-  }
- */
+
+//HTML을 필터링할 때 허용할 것들
+const sanitizeOption = {
+  allowedTags: [
+    'h1',
+    'h2',
+    'b',
+    'i',
+    'u',
+    's',
+    'p',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'a',
+    'img'
+  ],
+  allowedAttributes: {
+    a: ['href', 'name', 'target'],
+    img: ['src'],
+    li: ['class']
+  },
+  allowedSchemes: ['data', 'http'],
+}
+
 export const write = async (ctx) => {
   const schema = Joi.object().keys({
     //객체가 다음 필드를 가지고 있음을 검증
@@ -58,7 +77,7 @@ export const write = async (ctx) => {
   const { title, body, tags } = ctx.request.body;
   const post = new Post({
     title,
-    body,
+    body: sanitizeHtml(body, sanitizeOption),
     tags,
     user: ctx.state.user,
   });
@@ -68,6 +87,15 @@ export const write = async (ctx) => {
   } catch (e) {
     ctx.throw(500, e);
   }
+};
+
+//html을 없애고 내용이 너무 길면 200자로 제한
+const removeHtmlAndShorten = body => {
+  const filtered = sanitizeHtml(body, {
+    allowedTags: [],
+  });
+
+  return filtered.length < 200 ? filtered : `${filtered.slice(0, 200)}...`;
 };
 
 export const list = async (ctx) => {
@@ -92,15 +120,13 @@ export const list = async (ctx) => {
       .sort({ _id: -1 })
       .limit(10)
       .skip((page - 1) * 10)
+      .lean()
       .exec();
     const postCount = await Post.countDocuments(query).exec();
     ctx.set('last-page', Math.ceil(postCount / 10));
-    ctx.body = posts
-      .map((post) => post.toJSON())
-      .map((post) => ({
+    ctx.body = posts.map((post) => ({
         ...post,
-        body:
-          post.body.length < 200 ? post.body : `${post.body.slice(0, 200)} ...`,
+        body: removeHtmlAndShorten(post.body),
       }));
   } catch (e) {
     ctx.throw(500, e);
@@ -137,8 +163,13 @@ export const update = async (ctx) => {
     return;
   }
   const { id } = ctx.params;
+
+  const nextData = {...ctx.request.body};
+  if(nextData.body){
+    nextData.body = sanitizeHtml(nextData.body, sanitizeOption)
+  }
   try {
-    const post = await Post.findByIdAndUpdate(id, ctx.request.body, {
+    const post = await Post.findByIdAndUpdate(id, nextData, {
       new: true, //이 값 설정시 업데이트된 데이터를 반환함
     }).exec();
     if (!post) {
