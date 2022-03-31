@@ -5,6 +5,7 @@ import PostViewer from '../../components/post/PostViewer';
 import { useParams, useNavigate } from 'react-router-dom';
 import PostActionButtons from '../../components/post/PostActionButtons';
 import { setOriginalPost } from '../../modules/write';
+import { removePost } from '../../lib/api/posts';
 
 const PostViewerContainer = () => {
     //처음 마운트될 때 포스트 읽기 API 요청
@@ -31,6 +32,15 @@ const PostViewerContainer = () => {
         navigate('/write');
     }
 
+    const onRemove = async () => {
+        try{
+            await removePost(postId);
+            navigate('/');
+        }catch(e){
+            console.log(e);
+        }
+    };
+
     const ownPost = (user && user._id) === (post && post.user._id);
     return (
     <PostViewer 
@@ -38,7 +48,7 @@ const PostViewerContainer = () => {
         loading={loading}
         error={error}
         actionButtons={
-            ownPost && <PostActionButtons onEdit={onEdit}/>} 
+            ownPost && <PostActionButtons onEdit={onEdit} onRemove={onRemove}/>} 
     />);
 };
 
